@@ -11,3 +11,20 @@ Since IntelliJ IDEA is your primary IDE, we will build a clean, decoupled full-s
 3. Routing & Mapping API (Google Maps Platform or OpenStreetMap/OSRM):
     Why: Heavy haulage routes require leg-by-leg routing to compute the full transit cost accurately:$$\text{Total Distance} = D_{\text{Base} \to \text{Pickup}} + D_{\text{Pickup} \to \text{Destination}} + D_{\text{Destination} \to \text{Base}}$$
     Using backend distance calculation via spatial APIs prevents client-side tampering and keeps pricing formulas secure.
+
+
+
+Project Timeline & Delivery Estimates
+Phase 1: Architecture & Setup (Days 1–3)
+├── Setup IntelliJ Spring Boot Maven project & React frontend.
+└── Configure project structure, dependencies, and environment configurations.
+
+Phase 2: Core End-User Features (Days 4–9)
+├── Develop interactive landing page with company branding & fleet showcase.
+├── Build backend trip calculator logic (Base -> Pickup -> Destination -> Base).
+└── Build frontend distance estimator form & integrate with backend API.
+
+Phase 3: Integration & Polish (Days 10–14)
+├── Add Google Maps Place Autocomplete integration.
+├── Write automated backend unit tests and frontend validation.
+└── Complete responsive UI styling and UI testing.
