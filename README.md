@@ -54,3 +54,12 @@ ss-heavy-haulage/
 │   └── App.tsx
 ├── package.json
 └── tailwind.config.js
+
+
+
+### Project Features
+Fleet Showcase: Dynamic catalog of heavy-haul rigs and specialized low-beds.
+
+Tri-Leg Distance Estimator: Computes travel distances (Base → Pickup → Destination → Base).
+
+Instant Cost Calculation: Transparent ZAR rate estimation based on load weight and distance.
