@@ -11,5 +11,12 @@ import org.springframework.web.util.UriUtils;
 import java.nio.charset.StandardCharsets;
 
 @Service
-public class OsrmRoutingService {
+public class OsrmRoutingService implements RoutingService{
+
+    private static final Logger log = LoggerFactory.getLogger(OsrmRoutingService.class);
+    private final RestClient restClient;
+
+    public OsrmRoutingService(RestClient restClient) {
+        this.restClient = restClient;
+    }
 }
