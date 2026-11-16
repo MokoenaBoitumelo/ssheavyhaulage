@@ -26,15 +26,29 @@ public class QuoteCalculatorService {
         this.ratePerKm = ratePerKm;
     }
 
-    private double simulateDistance(double lat1, double lon1, double lat2, double lon2) {
-        // Haversine formula calculation for distance in KM
-        final int R = 6371; // Earth radius in km
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c * 1.3; // 1.3 road winding factor approximation
+    public QuoteResponse calculateQuote(QuoteRequest request) {
+        Coordinates pickupCoords = routingService.geocodeAddress(request.getPickupAddress());
+        Coordinates destinationCoords = routingService.geocodeAddress(request.getDestinationAddress());
+
+        double leg1 = routingService.getDrivingDistanceKm(baseDepot, pickupCoords);
+        double leg2 = routingService.getDrivingDistanceKm(pickupCoords, destinationCoords);
+        double leg3 = routingService.getDrivingDistanceKm(destinationCoords, baseDepot);
+
+        double totalDistanceKm = roundTwoDecimals(leg1 + leg2 + leg3);
+
+        // Weight surcharge: 5% increase per ton above standard 10-ton base load
+        double excessTons = Math.max(0.0, request.getCargoWeightTons() - 10.0);
+        double weightFactor = 1.0 + (excessTons * 0.05);
+
+        double totalCost = baseFlatFee + (totalDistanceKm * ratePerKm * weightFactor);
+
+        return QuoteResponse.builder()
+                .baseToPickupKm(roundTwoDecimals(leg1))
+                .pickupToDestinationKm(roundTwoDecimals(leg2))
+                .destinationToBaseKm(roundTwoDecimals(leg3))
+                .totalDistanceKm(totalDistanceKm)
+                .estimatedCostZAR(roundTwoDecimals(totalCost))
+                .currency("ZAR")
+                .build();
     }
 }
