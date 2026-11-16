@@ -1,8 +1,9 @@
-// backend/src/main/java/com/ssheavyhaulage/service/QuoteCalculatorService.java
 package com.ssheavyhaulage.service;
 
+import com.ssheavyhaulage.dto.Coordinates;
 import com.ssheavyhaulage.dto.QuoteRequest;
 import com.ssheavyhaulage.dto.QuoteResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
