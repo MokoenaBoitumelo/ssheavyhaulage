@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ss-heavy-haulage-backend
+  datasource:
+    url: jdbc:h2:mem:sshaulagedb;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# Custom Haulage Pricing & Base Hub Config (Gauteng / Kempton Park Depot)
+haulage:
+  base:
+    lat: -26.1076
+    lng: 28.2293
+    flat-fee-zar: 1500.00
+    rate-per-km-zar: 45.00
