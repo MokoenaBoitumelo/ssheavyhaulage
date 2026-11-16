@@ -46,4 +46,29 @@ public class OsrmRoutingService implements RoutingService{
             throw new IllegalStateException("Location lookup service temporarily unavailable. Please try again.");
         }
     }
+
+    @Override
+    public double getDrivingDistanceKm(Coordinates origin, Coordinates destination) {
+        // OSRM expects coordinates in longitude,latitude order
+        String url = String.format(
+                "https://router.project-osrm.org/route/v1/driving/%f,%f;%f,%f?overview=false",
+                origin.lng(), origin.lat(), destination.lng(), destination.lat()
+        );
+
+        try {
+            JsonNode response = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            if (response != null && "Ok".equals(response.path("code").asText())) {
+                double distanceMeters = response.path("routes").get(0).path("distance").asDouble();
+                return distanceMeters / 1000.0;
+            }
+        } catch (Exception e) {
+            log.warn("OSRM routing failed, falling back to Haversine road approximation: {}", e.getMessage());
+        }
+
+        return calculateHaversineFallback(origin, destination);
+    }
 }
