@@ -14,26 +14,16 @@ public class QuoteCalculatorService {
     private final double baseFlatFee;
     private final double ratePerKm;
 
-    public QuoteResponse calculateQuote(QuoteRequest request) {
-        // Mock distance extraction (In production, replace with Google Matrix / OSRM API call)
-        double leg1 = simulateDistance(BASE_LAT, BASE_LNG, -26.1384, 28.2571); // Base -> Pickup
-        double leg2 = simulateDistance(-26.1384, 28.2571, -29.8587, 31.0218); // Pickup -> Destination
-        double leg3 = simulateDistance(-29.8587, 31.0218, BASE_LAT, BASE_LNG); // Destination -> Base
-
-        double totalDistanceKm = Math.round((leg1 + leg2 + leg3) * 100.0) / 100.0;
-
-        // Weight surcharge calculation: 5% surcharge for every 10 tons
-        double weightFactor = 1.0 + (Math.max(0, request.getCargoWeightTons() - 10) * 0.05);
-        double totalCost = BASE_FLAT_FEE + (totalDistanceKm * RATE_PER_KM * weightFactor);
-
-        return QuoteResponse.builder()
-                .baseToPickupKm(Math.round(leg1 * 100.0) / 100.0)
-                .pickupToDestinationKm(Math.round(leg2 * 100.0) / 100.0)
-                .destinationToBaseKm(Math.round(leg3 * 100.0) / 100.0)
-                .totalDistanceKm(totalDistanceKm)
-                .estimatedCostZAR(Math.round(totalCost * 100.0) / 100.0)
-                .currency("ZAR")
-                .build();
+    public QuoteCalculatorService(
+            RoutingService routingService,
+            @Value("${haulage.base.lat}") double baseLat,
+            @Value("${haulage.base.lng}") double baseLng,
+            @Value("${haulage.base.flat-fee-zar}") double baseFlatFee,
+            @Value("${haulage.base.rate-per-km-zar}") double ratePerKm) {
+        this.routingService = routingService;
+        this.baseDepot = new Coordinates(baseLat, baseLng);
+        this.baseFlatFee = baseFlatFee;
+        this.ratePerKm = ratePerKm;
     }
 
     private double simulateDistance(double lat1, double lon1, double lat2, double lon2) {
