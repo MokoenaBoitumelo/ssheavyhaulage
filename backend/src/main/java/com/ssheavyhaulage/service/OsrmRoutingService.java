@@ -71,4 +71,15 @@ public class OsrmRoutingService implements RoutingService{
 
         return calculateHaversineFallback(origin, destination);
     }
+
+    private double calculateHaversineFallback(Coordinates c1, Coordinates c2) {
+        final int earthRadiusKm = 6371;
+        double dLat = Math.toRadians(c2.lat() - c1.lat());
+        double dLon = Math.toRadians(c2.lng() - c1.lng());
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(c1.lat())) * Math.cos(Math.toRadians(c2.lat()))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusKm * c * 1.25; // 1.25 road curvature factor
+    }
 }
