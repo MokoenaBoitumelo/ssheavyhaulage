@@ -51,4 +51,8 @@ public class QuoteCalculatorService {
                 .currency("ZAR")
                 .build();
     }
+
+    private double roundTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
 }
