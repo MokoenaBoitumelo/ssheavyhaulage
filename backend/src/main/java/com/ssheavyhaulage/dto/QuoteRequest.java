@@ -3,6 +3,7 @@ package com.ssheavyhaulage.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 @Data
@@ -14,5 +15,6 @@ public class QuoteRequest {
     private String destinationAddress;
 
     @NotNull(message = "Cargo weight is required")
-    private Double cargoWeightTons; // Tonnage affects per-km multiplier
+    @Positive(message = "Cargo weight must be greater than zero")
+    private Double cargoWeightTons;
 }
