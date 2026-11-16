@@ -9,12 +9,10 @@ import org.springframework.stereotype.Service;
 @Service
 public class QuoteCalculatorService {
 
-    // Base location: e.g., Johannesburg Fleet Hub
-    private static final double BASE_LAT = -26.2041;
-    private static final double BASE_LNG = 28.0473;
-
-    private static final double BASE_FLAT_FEE = 1500.00; // Standard base dispatch fee in ZAR
-    private static final double RATE_PER_KM = 45.00;     // Base rate per kilometer in ZAR
+    private final RoutingService routingService;
+    private final Coordinates baseDepot;
+    private final double baseFlatFee;
+    private final double ratePerKm;
 
     public QuoteResponse calculateQuote(QuoteRequest request) {
         // Mock distance extraction (In production, replace with Google Matrix / OSRM API call)
