@@ -114,93 +114,6 @@ Tri-Leg Distance Estimator: Computes travel distances (Base → Pickup → Desti
 Instant Cost Calculation: Transparent ZAR rate estimation based on load weight and distance.
 ```
 
-## File: `./pom.xml`
-
-```text
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.0</version>
-        <relativePath/> <!-- lookup parent from repository -->
-    </parent>
-
-    <groupId>com.ssheavyhaulage</groupId>
-    <artifactId>ss-heavy-haulage-backend</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
-    <name>ss-heavy-haulage-backend</name>
-    <description>Backend logistics and quote calculation engine for SS Heavy Haulage</description>
-
-    <properties>
-        <java.version>21</java.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    </properties>
-
-    <dependencies>
-        <!-- Spring Boot Web Starter for REST Controllers -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- Spring Boot Validation Starter for DTO Request Validation (@Valid, @NotNull, etc.) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <!-- Spring Data JPA for Database Persistence -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-
-        <!-- PostgreSQL Driver for Production Database Connection -->
-        <dependency>
-            <groupId>org.postgresql</groupId>
-            <artifactId>postgresql</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- H2 In-Memory Database for Fast Local Testing & Development -->
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-
-        <!-- Lombok to Reduce Boilerplate Code (Getters, Setters, Builders) -->
-        <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <optional>true</optional>
-        </dependency>
-
-        <!-- Spring Boot Test Starter (JUnit 5, Mockito, Spring Test) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-    </dependencies>
-
-    <build>
-        <plugins>
-            <!-- Spring Boot Maven Plugin for Executable Jar packaging -->
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-            </dependency>
-        </plugins>
-    </build>
-</project>
-```
-
 ## File: `./Architectural_approach.md`
 
 ```text
@@ -245,11 +158,12 @@ Phase 3: Integration & Polish (Days 10–14)
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.3.0</version>
-
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.0</version>
+        <relativePath/>
+    </parent>
 
     <groupId>com.ssheavyhaulage</groupId>
     <artifactId>ss-heavy-haulage-backend</artifactId>
@@ -380,39 +294,69 @@ class FleetControllerTest {
 ## File: `./backend/src/test/java/com/ssheavyhaulage/service/QuoteCalculatorServiceTest.java`
 
 ```text
-// backend/src/test/java/com/ssheavyhaulage/service/QuoteCalculatorServiceTest.java
 package com.ssheavyhaulage.service;
 
+import com.ssheavyhaulage.dto.Coordinates;
 import com.ssheavyhaulage.dto.QuoteRequest;
 import com.ssheavyhaulage.dto.QuoteResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.when;
 
+@ExtendWith(MockitoExtension.class)
 class QuoteCalculatorServiceTest {
+
+    @Mock
+    private RoutingService routingService;
 
     private QuoteCalculatorService quoteCalculatorService;
 
+    private final Coordinates kemptonDepot = new Coordinates(-26.1076, 28.2293);
+
     @BeforeEach
     void setUp() {
-        quoteCalculatorService = new QuoteCalculatorService();
+        quoteCalculatorService = new QuoteCalculatorService(
+                routingService,
+                kemptonDepot.lat(),
+                kemptonDepot.lng(),
+                1500.00,
+                45.00
+        );
     }
 
     @Test
-    @DisplayName("Should correctly calculate tri-leg total distance and estimate fare in ZAR")
+    @DisplayName("Should calculate accurate tri-leg distance and ZAR cost with weight surcharge")
     void testCalculateQuoteSuccess() {
+        Coordinates pickup = new Coordinates(-26.1384, 28.2571);
+        Coordinates destination = new Coordinates(-29.8587, 31.0218);
+
+        when(routingService.geocodeAddress("Kempton Park")).thenReturn(pickup);
+        when(routingService.geocodeAddress("Durban Harbour")).thenReturn(destination);
+
+        when(routingService.getDrivingDistanceKm(kemptonDepot, pickup)).thenReturn(10.0);
+        when(routingService.getDrivingDistanceKm(pickup, destination)).thenReturn(570.0);
+        when(routingService.getDrivingDistanceKm(destination, kemptonDepot)).thenReturn(580.0);
+
         QuoteRequest request = new QuoteRequest();
-        request.setPickupAddress("O.R. Tambo International Airport, Kempton Park");
-        request.setDestinationAddress("Durban Harbour, KwaZulu-Natal");
-        request.setCargoWeightTons(15.0);
+        request.setPickupAddress("Kempton Park");
+        request.setDestinationAddress("Durban Harbour");
+        request.setCargoWeightTons(20.0); // 10 excess tons -> 1.50 weight multiplier
 
         QuoteResponse response = quoteCalculatorService.calculateQuote(request);
 
-        assertNotNull(response);
-        assertTrue(response.getTotalDistanceKm() > 0);
-        assertTrue(response.getEstimatedCostZAR() > 0);
+        // Total distance: 10 + 570 + 580 = 1160 km
+        // Cost: 1500 + (1160 * 45 * 1.50) = 1500 + 78300 = 79800.00 ZAR
+        assertEquals(10.0, response.getBaseToPickupKm());
+        assertEquals(570.0, response.getPickupToDestinationKm());
+        assertEquals(580.0, response.getDestinationToBaseKm());
+        assertEquals(1160.0, response.getTotalDistanceKm());
+        assertEquals(79800.00, response.getEstimatedCostZAR());
         assertEquals("ZAR", response.getCurrency());
     }
 }
@@ -448,6 +392,39 @@ import java.util.List;
 @Repository
 public interface FleetVehicleRepository extends JpaRepository<FleetVehicle, Long> {
     List<FleetVehicle> findByAvailableTrue();
+}
+```
+
+## File: `./backend/src/main/java/com/ssheavyhaulage/config/GlobalExceptionHandler.java`
+
+```text
+package com.ssheavyhaulage.config;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler {
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity> handleBadLocation(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity> handleValidationErrors(MethodArgumentNotValidException ex) {
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult().getFieldErrors()
+                .forEach(err -> errors.put(err.getField(), err.getDefaultMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
 }
 ```
 
@@ -499,6 +476,28 @@ public class DataSeeder {
                 ));
             }
         };
+    }
+}
+```
+
+## File: `./backend/src/main/java/com/ssheavyhaulage/config/AppConfig.java`
+
+```text
+package com.ssheavyhaulage.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestClient;
+
+@Configuration
+public class AppConfig {
+
+    @Bean
+    public RestClient restClient() {
+        return RestClient.builder()
+                // Nominatim requires a valid custom User-Agent header per usage policy
+                .defaultHeader("User-Agent", "SSHeavyHaulagePortal/1.0 (contact@ssheavyhaulage.co.za)")
+                .build();
     }
 }
 ```
@@ -565,59 +564,170 @@ public class FleetController {
 }
 ```
 
+## File: `./backend/src/main/java/com/ssheavyhaulage/service/OsrmRoutingService.java`
+
+```text
+package com.ssheavyhaulage.service;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.ssheavyhaulage.dto.Coordinates;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriUtils;
+
+import java.nio.charset.StandardCharsets;
+
+@Service
+public class OsrmRoutingService implements RoutingService{
+
+    private static final Logger log = LoggerFactory.getLogger(OsrmRoutingService.class);
+    private final RestClient restClient;
+
+    public OsrmRoutingService(RestClient restClient) {
+        this.restClient = restClient;
+    }
+
+    @Override
+    public Coordinates geocodeAddress(String address) {
+        String encodedQuery = UriUtils.encode(address, StandardCharsets.UTF_8);
+        String url = "https://nominatim.openstreetmap.org/search?q=" + encodedQuery
+                + "&countrycodes=za&format=json&limit=1";
+
+        try {
+            JsonNode response = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            if (response != null && response.isArray() && !response.isEmpty()) {
+                JsonNode firstMatch = response.get(0);
+                double lat = firstMatch.get("lat").asDouble();
+                double lon = firstMatch.get("lon").asDouble();
+                return new Coordinates(lat, lon);
+            }
+            throw new IllegalArgumentException("Could not resolve South African location: " + address);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            log.warn("Geocoding API unreachable for '{}', falling back to default depot offset: {}", address, e.getMessage());
+            throw new IllegalStateException("Location lookup service temporarily unavailable. Please try again.");
+        }
+    }
+
+    @Override
+    public double getDrivingDistanceKm(Coordinates origin, Coordinates destination) {
+        // OSRM expects coordinates in longitude,latitude order
+        String url = String.format(
+                "https://router.project-osrm.org/route/v1/driving/%f,%f;%f,%f?overview=false",
+                origin.lng(), origin.lat(), destination.lng(), destination.lat()
+        );
+
+        try {
+            JsonNode response = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            if (response != null && "Ok".equals(response.path("code").asText())) {
+                double distanceMeters = response.path("routes").get(0).path("distance").asDouble();
+                return distanceMeters / 1000.0;
+            }
+        } catch (Exception e) {
+            log.warn("OSRM routing failed, falling back to Haversine road approximation: {}", e.getMessage());
+        }
+
+        return calculateHaversineFallback(origin, destination);
+    }
+
+    private double calculateHaversineFallback(Coordinates c1, Coordinates c2) {
+        final int earthRadiusKm = 6371;
+        double dLat = Math.toRadians(c2.lat() - c1.lat());
+        double dLon = Math.toRadians(c2.lng() - c1.lng());
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(c1.lat())) * Math.cos(Math.toRadians(c2.lat()))
+                * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return earthRadiusKm * c * 1.25; // 1.25 road curvature factor
+    }
+}
+
+```
+
 ## File: `./backend/src/main/java/com/ssheavyhaulage/service/QuoteCalculatorService.java`
 
 ```text
-// backend/src/main/java/com/ssheavyhaulage/service/QuoteCalculatorService.java
 package com.ssheavyhaulage.service;
 
+import com.ssheavyhaulage.dto.Coordinates;
 import com.ssheavyhaulage.dto.QuoteRequest;
 import com.ssheavyhaulage.dto.QuoteResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class QuoteCalculatorService {
 
-    // Base location: e.g., Johannesburg Fleet Hub
-    private static final double BASE_LAT = -26.2041;
-    private static final double BASE_LNG = 28.0473;
+    private final RoutingService routingService;
+    private final Coordinates baseDepot;
+    private final double baseFlatFee;
+    private final double ratePerKm;
 
-    private static final double BASE_FLAT_FEE = 1500.00; // Standard base dispatch fee in ZAR
-    private static final double RATE_PER_KM = 45.00;     // Base rate per kilometer in ZAR
+    public QuoteCalculatorService(
+            RoutingService routingService,
+            @Value("${haulage.base.lat}") double baseLat,
+            @Value("${haulage.base.lng}") double baseLng,
+            @Value("${haulage.base.flat-fee-zar}") double baseFlatFee,
+            @Value("${haulage.base.rate-per-km-zar}") double ratePerKm) {
+        this.routingService = routingService;
+        this.baseDepot = new Coordinates(baseLat, baseLng);
+        this.baseFlatFee = baseFlatFee;
+        this.ratePerKm = ratePerKm;
+    }
 
     public QuoteResponse calculateQuote(QuoteRequest request) {
-        // Mock distance extraction (In production, replace with Google Matrix / OSRM API call)
-        double leg1 = simulateDistance(BASE_LAT, BASE_LNG, -26.1384, 28.2571); // Base -> Pickup
-        double leg2 = simulateDistance(-26.1384, 28.2571, -29.8587, 31.0218); // Pickup -> Destination
-        double leg3 = simulateDistance(-29.8587, 31.0218, BASE_LAT, BASE_LNG); // Destination -> Base
+        Coordinates pickupCoords = routingService.geocodeAddress(request.getPickupAddress());
+        Coordinates destinationCoords = routingService.geocodeAddress(request.getDestinationAddress());
 
-        double totalDistanceKm = Math.round((leg1 + leg2 + leg3) * 100.0) / 100.0;
+        double leg1 = routingService.getDrivingDistanceKm(baseDepot, pickupCoords);
+        double leg2 = routingService.getDrivingDistanceKm(pickupCoords, destinationCoords);
+        double leg3 = routingService.getDrivingDistanceKm(destinationCoords, baseDepot);
 
-        // Weight surcharge calculation: 5% surcharge for every 10 tons
-        double weightFactor = 1.0 + (Math.max(0, request.getCargoWeightTons() - 10) * 0.05);
-        double totalCost = BASE_FLAT_FEE + (totalDistanceKm * RATE_PER_KM * weightFactor);
+        double totalDistanceKm = roundTwoDecimals(leg1 + leg2 + leg3);
+
+        // Weight surcharge: 5% increase per ton above standard 10-ton base load
+        double excessTons = Math.max(0.0, request.getCargoWeightTons() - 10.0);
+        double weightFactor = 1.0 + (excessTons * 0.05);
+
+        double totalCost = baseFlatFee + (totalDistanceKm * ratePerKm * weightFactor);
 
         return QuoteResponse.builder()
-                .baseToPickupKm(Math.round(leg1 * 100.0) / 100.0)
-                .pickupToDestinationKm(Math.round(leg2 * 100.0) / 100.0)
-                .destinationToBaseKm(Math.round(leg3 * 100.0) / 100.0)
+                .baseToPickupKm(roundTwoDecimals(leg1))
+                .pickupToDestinationKm(roundTwoDecimals(leg2))
+                .destinationToBaseKm(roundTwoDecimals(leg3))
                 .totalDistanceKm(totalDistanceKm)
-                .estimatedCostZAR(Math.round(totalCost * 100.0) / 100.0)
+                .estimatedCostZAR(roundTwoDecimals(totalCost))
                 .currency("ZAR")
                 .build();
     }
 
-    private double simulateDistance(double lat1, double lon1, double lat2, double lon2) {
-        // Haversine formula calculation for distance in KM
-        final int R = 6371; // Earth radius in km
-        double latDistance = Math.toRadians(lat2 - lat1);
-        double lonDistance = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
-                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c * 1.3; // 1.3 road winding factor approximation
+    private double roundTwoDecimals(double value) {
+        return Math.round(value * 100.0) / 100.0;
     }
+}
+```
+
+## File: `./backend/src/main/java/com/ssheavyhaulage/service/RoutingService.java`
+
+```text
+package com.ssheavyhaulage.service;
+
+import com.ssheavyhaulage.dto.Coordinates;
+
+public interface RoutingService {
+    Coordinates geocodeAddress(String address);
+    double getDrivingDistanceKm(Coordinates origin, Coordinates destination);
 }
 ```
 
@@ -650,6 +760,7 @@ package com.ssheavyhaulage.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import lombok.Data;
 
 @Data
@@ -661,8 +772,17 @@ public class QuoteRequest {
     private String destinationAddress;
 
     @NotNull(message = "Cargo weight is required")
-    private Double cargoWeightTons; // Tonnage affects per-km multiplier
+    @Positive(message = "Cargo weight must be greater than zero")
+    private Double cargoWeightTons;
 }
+```
+
+## File: `./backend/src/main/java/com/ssheavyhaulage/dto/Coordinates.java`
+
+```text
+package com.ssheavyhaulage.dto;
+
+public record Coordinates(double lat, double lng) {}
 ```
 
 ## File: `./backend/src/main/java/com/ssheavyhaulage/model/FleetVehicle.java`
