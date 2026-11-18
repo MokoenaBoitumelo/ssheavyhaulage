@@ -41,4 +41,25 @@ public class QuoteControllerTest {
                 .andExpect(jsonPath("$.pickupAddress").value("Pickup location is required"))
                 .andExpect(jsonPath("$.cargoWeightTons").value("Cargo weight must be greater than zero"));
     }
+
+    @Test
+    @DisplayName("Should return 400 Bad Request when address cannot be geocoded")
+    void shouldHandleUnresolvedLocation() throws Exception {
+        when(quoteCalculatorService.calculateQuote(any()))
+                .thenThrow(new IllegalArgumentException("Could not resolve South African location: Atlantis"));
+
+        String requestJson = """
+                {
+                    "pickupAddress": "Atlantis",
+                    "destinationAddress": "Durban Harbour",
+                    "cargoWeightTons": 15.0
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/quotes/calculate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Could not resolve South African location: Atlantis"));
+    }
 }
