@@ -45,16 +45,24 @@ ss-heavy-haulage/
 │   └── pom.xml                     # Maven Dependencies
 │
 └── frontend/                       # React + TypeScript SPA (IntelliJ Module)
-├── public/
-├── src/
-│   ├── components/             # Reusable UI (Navbar, FleetCard, QuoteForm)
-│   ├── pages/                  # LandingPage, ServicesPage, EstimatePage
-│   ├── services/               # Axios API client modules
-│   ├── types/                  # TypeScript interface definitions
-│   └── App.tsx
-├── package.json
-└── tailwind.config.js
-
+   ├── index.html
+   ├── package.json
+   ├── postcss.config.js
+   ├── tailwind.config.js
+   ├── tsconfig.json
+   └── src/
+      ├── types/
+      │   └── haulage.ts          # FleetVehicle, QuoteRequest, QuoteResponse interfaces
+      ├── services/
+      │   └── apiClient.ts        # Axios client wired to http://localhost:8080/api/v1
+      ├── components/
+      │   ├── Navbar.tsx          # Brand header & section navigation
+      │   ├── Hero.tsx            # SS Heavy Haulage Kempton Park hub hero section
+      │   ├── FleetShowcase.tsx   # Fetches & renders /api/v1/fleet vehicles
+      │   └── QuoteEstimator.tsx  # Tri-leg distance & ZAR quote calculator form
+      ├── App.tsx                 # Main layout assembling the end-user portal
+      └── main.tsx                # Application entry point & Tailwind CSS import
+      
 
 
 ### Project Features
