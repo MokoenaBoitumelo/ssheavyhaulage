@@ -172,7 +172,7 @@ Phase 3: Integration & Polish (Days 10–14)
     <description>Backend logistics and quote calculation engine for SS Heavy Haulage</description>
 
     <properties>
-        <java.version>21</java.version>
+        <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -213,6 +213,7 @@ Phase 3: Integration & Polish (Days 10–14)
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
             <optional>true</optional>
         </dependency>
 
@@ -226,6 +227,16 @@ Phase 3: Integration & Polish (Days 10–14)
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>${java.version}</release>
+                </configuration>
+            </plugin>
+
+            <!-- Spring Boot Maven Plugin for Executable Jar packaging -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -241,6 +252,77 @@ Phase 3: Integration & Polish (Days 10–14)
         </plugins>
     </build>
 </project>
+```
+
+## File: `./backend/src/test/java/com/ssheavyhaulage/controller/QuoteControllerTest.java`
+
+```text
+package com.ssheavyhaulage.controller;
+
+import com.ssheavyhaulage.service.QuoteCalculatorService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(QuoteController.class)
+public class QuoteControllerTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private QuoteCalculatorService quoteCalculatorService;
+
+    @Test
+    @DisplayName("Should return 400 Bad Request with field errors when payload is invalid")
+    void shouldRejectInvalidQuoteRequest() throws Exception {
+        String invalidJson = """
+                {
+                    "pickupAddress": "",
+                    "destinationAddress": "Durban Harbour",
+                    "cargoWeightTons": -5.0
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/quotes/calculate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(invalidJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.pickupAddress").value("Pickup location is required"))
+                .andExpect(jsonPath("$.cargoWeightTons").value("Cargo weight must be greater than zero"));
+    }
+
+    @Test
+    @DisplayName("Should return 400 Bad Request when address cannot be geocoded")
+    void shouldHandleUnresolvedLocation() throws Exception {
+        when(quoteCalculatorService.calculateQuote(any()))
+                .thenThrow(new IllegalArgumentException("Could not resolve South African location: Atlantis"));
+
+        String requestJson = """
+                {
+                    "pickupAddress": "Atlantis",
+                    "destinationAddress": "Durban Harbour",
+                    "cargoWeightTons": 15.0
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/quotes/calculate")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Could not resolve South African location: Atlantis"));
+    }
+}
+
 ```
 
 ## File: `./backend/src/test/java/com/ssheavyhaulage/controller/FleetControllerTest.java`
@@ -412,14 +494,23 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // Handles invalid or unresolved South African locations (HTTP 400)
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity> handleBadLocation(IllegalArgumentException ex) {
+    public ResponseEntity handleBadLocation(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Map.of("error", ex.getMessage()));
     }
 
+    // Handles external geocoding/routing service outages (HTTP 503)
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity handleServiceUnavailable(IllegalStateException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(Map.of("error", ex.getMessage()));
+    }
+
+    // Handles Jakarta Bean Validation failures on DTOs (@NotBlank, @Positive, etc.) (HTTP 400)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity> handleValidationErrors(MethodArgumentNotValidException ex) {
+    public ResponseEntity handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult().getFieldErrors()
                 .forEach(err -> errors.put(err.getField(), err.getDefaultMessage()));
@@ -488,6 +579,8 @@ package com.ssheavyhaulage.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.servlet.config.annotation.CorsRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 public class AppConfig {
@@ -498,6 +591,19 @@ public class AppConfig {
                 // Nominatim requires a valid custom User-Agent header per usage policy
                 .defaultHeader("User-Agent", "SSHeavyHaulagePortal/1.0 (contact@ssheavyhaulage.co.za)")
                 .build();
+    }
+
+    @Bean
+    public WebMvcConfigurer corsConfigurer() {
+        return new WebMvcConfigurer() {
+            @Override
+            public void addCorsMappings(CorsRegistry registry) {
+                registry.addMapping("/api/**")
+                        .allowedOrigins("http://localhost:3000", "http://localhost:5173")
+                        .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                        .allowedHeaders("*");
+            }
+        };
     }
 }
 ```
@@ -737,44 +843,36 @@ public interface RoutingService {
 // backend/src/main/java/com/ssheavyhaulage/dto/QuoteResponse.java
 package com.ssheavyhaulage.dto;
 
-import lombok.Builder;
-import lombok.Data;
-
-@Data
-@Builder
-public class QuoteResponse {
-    private double baseToPickupKm;
-    private double pickupToDestinationKm;
-    private double destinationToBaseKm;
-    private double totalDistanceKm;
-    private double estimatedCostZAR;
-    private String currency; // ZAR (R)
-}
+public record QuoteResponse(
+        double baseToPickupKm,
+        double pickupToDestinationKm,
+        double destinationToBaseKm,
+        double totalDistanceKm,
+        double estimatedCostZAR,
+        String currency
+) {}
 ```
 
 ## File: `./backend/src/main/java/com/ssheavyhaulage/dto/QuoteRequest.java`
 
 ```text
-// backend/src/main/java/com/ssheavyhaulage/dto/QuoteRequest.java
 package com.ssheavyhaulage.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.Data;
 
-@Data
-public class QuoteRequest {
-    @NotBlank(message = "Pickup location is required")
-    private String pickupAddress;
+public record QuoteRequest(
+        @NotBlank(message = "Pickup location is required")
+        String pickupAddress,
 
-    @NotBlank(message = "Destination location is required")
-    private String destinationAddress;
+        @NotBlank(message = "Destination location is required")
+        String destinationAddress,
 
-    @NotNull(message = "Cargo weight is required")
-    @Positive(message = "Cargo weight must be greater than zero")
-    private Double cargoWeightTons;
-}
+        @NotNull(message = "Cargo weight is required")
+        @Positive(message = "Cargo weight must be greater than zero")
+        Double cargoWeightTons
+) {}
 ```
 
 ## File: `./backend/src/main/java/com/ssheavyhaulage/dto/Coordinates.java`
@@ -788,19 +886,15 @@ public record Coordinates(double lat, double lng) {}
 ## File: `./backend/src/main/java/com/ssheavyhaulage/model/FleetVehicle.java`
 
 ```text
+// backend/src/main/java/com/ssheavyhaulage/model/FleetVehicle.java
 package com.ssheavyhaulage.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
-import lombok.*;
 
 @Entity
 @Table(name = "fleet_vehicles")
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
 public class FleetVehicle {
 
     @Id
@@ -809,11 +903,11 @@ public class FleetVehicle {
 
     @NotBlank
     @Column(nullable = false)
-    private String name; // e.g., "Freightliner Argosy Cab-Over"
+    private String name;
 
     @NotBlank
     @Column(nullable = false)
-    private String trailerType; // e.g., "34-Ton Superlink Tautliner", "50-Ton Lowbed"
+    private String trailerType;
 
     @Positive
     @Column(nullable = false)
@@ -824,8 +918,42 @@ public class FleetVehicle {
 
     private String imageUrl;
 
-    @Builder.Default
+    @Column(nullable = false)
     private boolean available = true;
+
+    public FleetVehicle() {}
+
+    public FleetVehicle(Long id, String name, String trailerType, Double maxPayloadTons,
+                        String description, String imageUrl, boolean available) {
+        this.id = id;
+        this.name = name;
+        this.trailerType = trailerType;
+        this.maxPayloadTons = maxPayloadTons;
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.available = available;
+    }
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public String getTrailerType() { return trailerType; }
+    public void setTrailerType(String trailerType) { this.trailerType = trailerType; }
+
+    public Double getMaxPayloadTons() { return maxPayloadTons; }
+    public void setMaxPayloadTons(Double maxPayloadTons) { this.maxPayloadTons = maxPayloadTons; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
+
+    public String getImageUrl() { return imageUrl; }
+    public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }
+
+    public boolean isAvailable() { return available; }
+    public void setAvailable(boolean available) { this.available = available; }
 }
 ```
 
