@@ -25,13 +25,15 @@ class FleetControllerTest {
 
     @Test
     void shouldReturnAvailableFleetVehicles() throws Exception {
-        FleetVehicle rig = FleetVehicle.builder()
-                .id(1L)
-                .name("Freightliner Cab-Over")
-                .trailerType("34-Ton Superlink")
-                .maxPayloadTons(34.0)
-                .available(true)
-                .build();
+        FleetVehicle rig = new FleetVehicle(
+                1L,
+                "Freightliner Cab-Over",
+                "34-Ton Superlink",
+                34.0,
+                "Heavy freight rig",
+                "/assets/fleet-freightliner.png",
+                true
+        );
 
         when(fleetRepository.findByAvailableTrue()).thenReturn(List.of(rig));
 
