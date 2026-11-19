@@ -47,20 +47,15 @@ class QuoteCalculatorServiceTest {
         when(routingService.getDrivingDistanceKm(pickup, destination)).thenReturn(570.0);
         when(routingService.getDrivingDistanceKm(destination, kemptonDepot)).thenReturn(580.0);
 
-        QuoteRequest request = new QuoteRequest();
-        request.setPickupAddress("Kempton Park");
-        request.setDestinationAddress("Durban Harbour");
-        request.setCargoWeightTons(20.0); // 10 excess tons -> 1.50 weight multiplier
+        QuoteRequest request = new QuoteRequest("Kempton Park", "Durban Harbour", 20.0);
 
         QuoteResponse response = quoteCalculatorService.calculateQuote(request);
 
-        // Total distance: 10 + 570 + 580 = 1160 km
-        // Cost: 1500 + (1160 * 45 * 1.50) = 1500 + 78300 = 79800.00 ZAR
-        assertEquals(10.0, response.getBaseToPickupKm());
-        assertEquals(570.0, response.getPickupToDestinationKm());
-        assertEquals(580.0, response.getDestinationToBaseKm());
-        assertEquals(1160.0, response.getTotalDistanceKm());
-        assertEquals(79800.00, response.getEstimatedCostZAR());
-        assertEquals("ZAR", response.getCurrency());
+        assertEquals(10.0, response.baseToPickupKm());
+        assertEquals(570.0, response.pickupToDestinationKm());
+        assertEquals(580.0, response.destinationToBaseKm());
+        assertEquals(1160.0, response.totalDistanceKm());
+        assertEquals(79800.00, response.estimatedCostZAR());
+        assertEquals("ZAR", response.currency());
     }
 }
