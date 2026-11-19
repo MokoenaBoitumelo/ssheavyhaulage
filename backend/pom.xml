@@ -20,6 +20,8 @@
     <properties>
         <java.version>25</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <byte-buddy.version>1.15.11</byte-buddy.version>
+        <argLine>-Dnet.bytebuddy.experimental=true</argLine>
     </properties>
 
     <dependencies>
@@ -61,10 +63,9 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <release>${java.version}</release>
+                    <argLine>${argLine}</argLine>
                 </configuration>
             </plugin>
 
