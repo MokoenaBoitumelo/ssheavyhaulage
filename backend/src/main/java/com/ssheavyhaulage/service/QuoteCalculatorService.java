@@ -27,8 +27,8 @@ public class QuoteCalculatorService {
     }
 
     public QuoteResponse calculateQuote(QuoteRequest request) {
-        Coordinates pickupCoords = routingService.geocodeAddress(request.getPickupAddress());
-        Coordinates destinationCoords = routingService.geocodeAddress(request.getDestinationAddress());
+        Coordinates pickupCoords = routingService.geocodeAddress(request.pickupAddress());
+        Coordinates destinationCoords = routingService.geocodeAddress(request.destinationAddress());
 
         double leg1 = routingService.getDrivingDistanceKm(baseDepot, pickupCoords);
         double leg2 = routingService.getDrivingDistanceKm(pickupCoords, destinationCoords);
@@ -37,19 +37,19 @@ public class QuoteCalculatorService {
         double totalDistanceKm = roundTwoDecimals(leg1 + leg2 + leg3);
 
         // Weight surcharge: 5% increase per ton above standard 10-ton base load
-        double excessTons = Math.max(0.0, request.getCargoWeightTons() - 10.0);
+        double excessTons = Math.max(0.0, request.cargoWeightTons() - 10.0);
         double weightFactor = 1.0 + (excessTons * 0.05);
 
         double totalCost = baseFlatFee + (totalDistanceKm * ratePerKm * weightFactor);
 
-        return QuoteResponse.builder()
-                .baseToPickupKm(roundTwoDecimals(leg1))
-                .pickupToDestinationKm(roundTwoDecimals(leg2))
-                .destinationToBaseKm(roundTwoDecimals(leg3))
-                .totalDistanceKm(totalDistanceKm)
-                .estimatedCostZAR(roundTwoDecimals(totalCost))
-                .currency("ZAR")
-                .build();
+        return new QuoteResponse(
+                roundTwoDecimals(leg1),
+                roundTwoDecimals(leg2),
+                roundTwoDecimals(leg3),
+                totalDistanceKm,
+                roundTwoDecimals(totalCost),
+                "ZAR"
+        );
     }
 
     private double roundTwoDecimals(double value) {
