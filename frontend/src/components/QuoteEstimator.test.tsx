@@ -46,7 +46,7 @@ describe("QuoteEstimator", () => {
         await waitFor(() => {
             expect(screen.getByText("1160.00 km")).toBeInTheDocument();
         });
-        expect(screen.getByText(/ZAR\s+79[\s\u00a0]800\.00/)).toBeInTheDocument();
+        expect(screen.getByText(/ZAR\s+79[\s\u00a0\u202f]?800[,.]00/)).toBeInTheDocument();
     });
 
     it("displays backend error message when location cannot be resolved", async () => {
