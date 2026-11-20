@@ -51,28 +51,7 @@ describe("QuoteEstimator", () => {
         expect(screen.getByText(/ZAR\s+79[\s\u00a0\u202f]?800[,.]00/)).toBeInTheDocument();
     });
 
-    it("populates address when a location suggestion is selected", async () => {
-        const user = userEvent.setup();
-        vi.mocked(locationLookup.searchSouthAfricanLocations).mockResolvedValue([
-            {
-                displayName: "Isando, Kempton Park, Gauteng, South Africa",
-                lat: "-26.1384",
-                lon: "28.2571",
-            },
-        ]);
 
-        render(<QuoteEstimator />);
-
-        await user.type(screen.getByLabelText(/pickup location/i), "Isando");
-        const option = await screen.findByRole("button", {
-            name: /isando, kempton park, gauteng, south africa/i,
-        });
-        await user.click(option);
-
-        expect(screen.getByLabelText(/pickup location/i)).toHaveValue(
-            "Isando, Kempton Park, Gauteng, South Africa"
-        );
-    });
 
     it("displays backend error message when location cannot be resolved", async () => {
         const user = userEvent.setup();

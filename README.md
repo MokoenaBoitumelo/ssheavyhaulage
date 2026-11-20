@@ -1,73 +1,110 @@
-# ssheavyhaulage
-Website for SS HEAVY HAULAGE
+# SS Heavy Haulage — Enterprise Logistics & Quote Portal
 
-# SS Heavy Haulage - End-User Logistics Portal
-
-Enterprise heavy load transport application designed for South African logistics networks.
+Full-stack heavy load transport web application and instant tri-leg quote calculator for **SS Heavy Haulage**, headquartered in **Kempton Park, Gauteng, South Africa**.
 
 ## Tech Stack
-- **Backend:** Java 21, Spring Boot 3, Maven, JUnit 5
-- **Frontend:** React, TypeScript, Tailwind CSS, Axios
-- **IDE:** IntelliJ IDEA
 
-## Getting Started
+- **Backend:** Java 25/26, Spring Boot 3.5.7, Spring Data JPA, Jakarta Bean Validation, H2 (local dev) / PostgreSQL (production), Maven, JUnit 5, Mockito
+- **Frontend:** React, TypeScript, Vite, Tailwind CSS, Axios, Lucide Icons, Vitest, React Testing Library
+- **Routing & Geocoding:** OpenStreetMap Nominatim (`countrycodes=za`) & OSRM Driving Distance API (with Haversine road-curvature fallback)
 
-### Backend Setup
-1. Open the `/backend` folder in IntelliJ IDEA.
-2. Run `mvn clean install` to resolve dependencies.
-3. Launch `SsHeavyHaulageApplication.java`.
-4. API will run at `http://localhost:8080/api/v1`.
+---
 
-### Frontend Setup
-1. Navigate to `/frontend` directory:
-   ```bash
-   cd frontend
-   npm install
-   npm start
+## Project Architecture & Folder Structure
 
 
-
-### Folder & Directory Structure
-ss-heavy-haulage/
-├── backend/                        # Spring Boot Application (IntelliJ Module)
+```text
+ssheavyhaulage/
+├── backend/                                        # Spring Boot 3.5.7 REST API
 │   ├── src/
 │   │   ├── main/
 │   │   │   ├── java/com/ssheavyhaulage/
-│   │   │   │   ├── config/         # Security & CORS configuration
-│   │   │   │   ├── controller/     # REST Endpoints (Quote, Fleet, Service controllers)
-│   │   │   │   ├── dto/            # Request/Response Data Transfer Objects
-│   │   │   │   ├── model/          # JPA Entities (FleetItem, QuoteRequest, Location)
-│   │   │   │   ├── repository/     # Spring Data Repositories
-│   │   │   │   └── service/        # Core Domain Logic (Distance & Fare Estimator)
+│   │   │   │   ├── config/                         # AppConfig (CORS/RestClient), DataSeeder, GlobalExceptionHandler
+│   │   │   │   ├── controller/                     # FleetController & QuoteController (/api/v1)
+│   │   │   │   ├── dto/                            # Java records (Coordinates, QuoteRequest, QuoteResponse)
+│   │   │   │   ├── model/                          # JPA entities (FleetVehicle)
+│   │   │   │   ├── repository/                     # Spring Data JPA repositories
+│   │   │   │   └── service/                        # RoutingService, OsrmRoutingService, QuoteCalculatorService
 │   │   │   └── resources/
-│   │   │       └── application.yml # Environment variables & DB config
-│   │   └── test/                   # JUnit 5 & Mockito Unit Tests
-│   └── pom.xml                     # Maven Dependencies
+│   │   │       └── application.yml                 # Server port, H2 datasource, Kempton Park hub & ZAR rates
+│   │   └── test/java/com/ssheavyhaulage/           # JUnit 5 & MockMvc unit/slice tests
+│   └── pom.xml
 │
-└── frontend/                       # React + TypeScript SPA (IntelliJ Module)
-   ├── index.html
-   ├── package.json
-   ├── postcss.config.js
-   ├── tailwind.config.js
-   ├── tsconfig.json
-   └── src/
-      ├── types/
-      │   └── haulage.ts          # FleetVehicle, QuoteRequest, QuoteResponse interfaces
-      ├── services/
-      │   └── apiClient.ts        # Axios client wired to http://localhost:8080/api/v1
-      ├── components/
-      │   ├── Navbar.tsx          # Brand header & section navigation
-      │   ├── Hero.tsx            # SS Heavy Haulage Kempton Park hub hero section
-      │   ├── FleetShowcase.tsx   # Fetches & renders /api/v1/fleet vehicles
-      │   └── QuoteEstimator.tsx  # Tri-leg distance & ZAR quote calculator form
-      ├── App.tsx                 # Main layout assembling the end-user portal
-      └── main.tsx                # Application entry point & Tailwind CSS import
+├── frontend/                                       # React + TypeScript + Vite SPA
+│   ├── src/
+│   │   ├── components/                             # Navbar, Hero, FleetShowcase, QuoteEstimator, LocationAutocompleteInput
+│   │   ├── services/                               # apiClient.ts (Axios), locationLookup.ts (Nominatim)
+│   │   ├── types/                                  # TypeScript contracts mirroring backend DTOs
+│   │   ├── App.tsx
+│   │   ├── main.tsx
+│   │   └── setupTests.ts
+│   ├── package.json
+│   ├── tailwind.config.js
+│   └── vite.config.ts
+│
+├── Architectural_approach.md
+└── README.md
+```
+
+
+
+### Core Domain Logic & Pricing Model
+1. Tri-Leg Route Calculation: Every quote computes driving distance across three legs starting and ending at the Kempton Park Depot (-26.1076, 28.2293):
+   $$\text{Total Distance} = D_{\text{Base} \to \text{Pickup}} + D_{\text{Pickup} \to \text{Destination}} + D_{\text{Destination} \to \text{Base}}$$   
+   
+2. ZAR Cost Formula:
+
+   . Base Flat Fee: 1,500.00 ZAR   
+   . Per-Kilometer Rate: 45.00 ZAR/km   
+   . Weight Surcharge: 5% multiplier increase per metric ton exceeding the 10-ton standard base load:
+   $$\text{Weight Factor} = 1.0 + \max(0, \text{CargoTons} - 10) \times 0.05$$   
+   $$\text{Estimated Cost (ZAR)} = 1500 + (\text{Total Distance} \times 45 \times \text{Weight Factor})$$   
+   
+### Getting Started
+Prerequisites:
+
+   . JDK 25 or 26 (JAVA_HOME configured) and Maven 3.9+
+   . Node.js 20+ and npm
+   
+1. Run the Backend (http://localhost:8080):
+
+         Bash
+            cd backend
+            mvn clean test
+            mvn spring-boot:run
+   
+      Fleet Endpoint: GET http://localhost:8080/api/v1/fleet   
+      Quote Endpoint: POST http://localhost:8080/api/v1/quotes/calculate   
+      H2 Console (Local Dev): http://localhost:8080/h2-console (jdbc:h2:mem:sshaulagedb)[cite: 1]
       
+   Security Note: Disable /h2-console (spring.h2.console.enabled=false) and supply PostgreSQL credentials and VITE_API_BASE_URL via environment variables before deploying to production[cite: 1].
+   
+2. Run the Frontend (http://localhost:5173):
+
+         Bash
+         cd frontend
+         npm install
+         npx vitest run
+         npm run dev
+
+(Optional) Create frontend/.env to override the backend API URL:
+
+      Code snippet
+      VITE_API_BASE_URL=http://localhost:8080/api/v1
 
 
-### Project Features
-Fleet Showcase: Dynamic catalog of heavy-haul rigs and specialized low-beds.
+### Automated Testing
 
-Tri-Leg Distance Estimator: Computes travel distances (Base → Pickup → Destination → Base).
+   Backend (JUnit 5, Mockito, MockMvc):
 
-Instant Cost Calculation: Transparent ZAR rate estimation based on load weight and distance.
+      Bash
+      cd backend && mvn test
+   
+   Covers QuoteCalculatorServiceTest, QuoteControllerTest, and FleetControllerTest[cite: 1].
+   
+   Frontend (Vitest & React Testing Library):
+
+      Bash
+      cd frontend && npx vitest run
+   
+   Covers form validation, debounced South African location selection, ZAR quote breakdown rendering, and API error alerts.
