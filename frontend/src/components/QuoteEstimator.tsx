@@ -3,6 +3,7 @@ import { Calculator, AlertCircle } from "lucide-react";
 import axios from "axios";
 import { calculateHaulageQuote } from "../services/apiClient";
 import { QuoteResponse } from "../types/haulage";
+import { LocationAutocompleteInput } from "./LocationAutocompleteInput";
 
 export function QuoteEstimator() {
     const [pickupAddress, setPickupAddress] = useState<string>("");
@@ -65,7 +66,24 @@ export function QuoteEstimator() {
                         onSubmit={handleSubmit}
                         noValidate
                         className="space-y-4 rounded-lg border border-haulage-steel bg-haulage-surface p-6"
+
                     >
+                        <LocationAutocompleteInput
+                            id="pickup"
+                            label="Pickup Location (South Africa)"
+                            placeholder="e.g., Isando, Kempton Park"
+                            value={pickupAddress}
+                            onChange={setPickupAddress}
+                        />
+
+                        <LocationAutocompleteInput
+                            id="destination"
+                            label="Destination Location (South Africa)"
+                            placeholder="e.g., Durban Harbour"
+                            value={destinationAddress}
+                            onChange={setDestinationAddress}
+                        />
+
                         <div>
                             <label htmlFor="pickup" className="block text-sm font-medium text-slate-200">
                                 Pickup Location (South Africa)
