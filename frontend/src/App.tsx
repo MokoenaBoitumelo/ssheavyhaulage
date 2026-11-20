@@ -3,6 +3,10 @@ import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import './App.css'
+import { Navbar } from "./components/Navbar";
+import { Hero } from "./components/Hero";
+import { FleetShowcase } from "./components/FleetShowcase";
+import { QuoteEstimator } from "./components/QuoteEstimator";
 
 function App() {
   const [count, setCount] = useState(0)
@@ -119,4 +123,18 @@ function App() {
   )
 }
 
-export default App
+export default function App() {
+  return (
+      <div className="min-h-screen bg-haulage-charcoal text-white">
+        <Navbar />
+        <main>
+          <Hero />
+          <FleetShowcase />
+          <QuoteEstimator />
+        </main>
+        <footer className="border-t border-haulage-steel bg-haulage-surface py-6 text-center text-xs text-slate-400">
+          SS Heavy Haulage • Kempton Park, Gauteng, South Africa
+        </footer>
+      </div>
+  );
+}
